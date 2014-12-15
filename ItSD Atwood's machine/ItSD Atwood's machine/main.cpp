@@ -22,7 +22,7 @@ ALLEGRO_EVENT ev;
 
 #define G_VALUE 9.81f
 int winXsize = 800;
-int winYsize = 800;
+int winYsize = 750;
 clock_t dt;
 clock_t last_time;
 long recalc_counter = 0;
@@ -41,6 +41,8 @@ public:
 	float left_minor_length;
 	float right_minor_length;	
 	float change1, change2;
+	double a1, d1, a2, d2;
+
 	machine(int x, int y, float r1, float m1, float r2, float m2, float m3, float l1, float l2, float lm1, float lm2)
 	{
 		main_pulley_coord_x = x;
@@ -55,6 +57,7 @@ public:
 		left_minor_length = lm1;
 		right_minor_length = lm2;
 		change1 = change2 = 0;
+		a1 = 0, a2 = 0;
 	}
 };
 
@@ -132,8 +135,8 @@ long fib(int f)
 
 int draw_on_screen(machine *atwood, clock_t current_time)
 {
-	#define RATIO_PX_per_CM 50
-#define TOP_MARG (50+atwood->radius*RATIO_PX_per_CM)
+	#define RATIO_PX_per_M 45
+#define TOP_MARG (50+atwood->radius*RATIO_PX_per_M)
 	//define some colors
 	ALLEGRO_COLOR wheel_color = al_map_rgb(100, 100, 100);
 	ALLEGRO_COLOR mass_color = al_map_rgb(50, 50, 50);
@@ -141,63 +144,63 @@ int draw_on_screen(machine *atwood, clock_t current_time)
 	ALLEGRO_COLOR white = al_map_rgb(255, 255, 255);
 	al_clear_to_color(al_map_rgb(0, 0, 20));
 	//draw main pulley and its center
-	al_draw_filled_circle(winXsize / 2, TOP_MARG, RATIO_PX_per_CM*atwood->radius, wheel_color);
+	al_draw_filled_circle(winXsize / 2, TOP_MARG, RATIO_PX_per_M*atwood->radius, wheel_color);
 	al_draw_filled_circle(winXsize / 2, TOP_MARG, 5, black);
 	//draw mass 1 and its string
-	al_draw_filled_rectangle(winXsize / 2 - atwood->radius*RATIO_PX_per_CM - (atwood->mass_x1 * 3), 
-		TOP_MARG + atwood->left_length*RATIO_PX_per_CM, 
-		winXsize / 2 - atwood->radius*RATIO_PX_per_CM + (atwood->mass_x1 * 3), 
-		TOP_MARG + atwood->left_length*RATIO_PX_per_CM + atwood->mass_x1 * 7, 
+	al_draw_filled_rectangle(winXsize / 2 - atwood->radius*RATIO_PX_per_M - (atwood->mass_x1 * 3), 
+		TOP_MARG + (atwood->left_length+atwood->change1)*RATIO_PX_per_M, 
+		winXsize / 2 - atwood->radius*RATIO_PX_per_M + (atwood->mass_x1 * 3), 
+		TOP_MARG + (atwood->left_length+atwood->change1)*RATIO_PX_per_M + atwood->mass_x1 * 7, 
 		mass_color);
-	al_draw_line(winXsize / 2 - atwood->radius*RATIO_PX_per_CM, 
+	al_draw_line(winXsize / 2 - atwood->radius*RATIO_PX_per_M, 
 		TOP_MARG, 
-		winXsize / 2 - atwood->radius*RATIO_PX_per_CM, 
-		TOP_MARG + atwood->left_length*RATIO_PX_per_CM, 
+		winXsize / 2 - atwood->radius*RATIO_PX_per_M, 
+		TOP_MARG + (atwood->left_length+atwood->change1)*RATIO_PX_per_M, 
 		white, 1);
 	//draw pulley 2 , its center and its string
-	al_draw_filled_circle(winXsize / 2 + atwood->radius*RATIO_PX_per_CM, 
-		TOP_MARG + atwood->right_length*RATIO_PX_per_CM, 
-		atwood->radius_2*RATIO_PX_per_CM, 
+	al_draw_filled_circle(winXsize / 2 + atwood->radius*RATIO_PX_per_M, 
+		TOP_MARG + (atwood->right_length-atwood->change1)*RATIO_PX_per_M, 
+		atwood->radius_2*RATIO_PX_per_M, 
 		wheel_color);
-	al_draw_filled_circle(winXsize / 2 + atwood->radius*RATIO_PX_per_CM, 
-		TOP_MARG + atwood->right_length*RATIO_PX_per_CM, 
+	al_draw_filled_circle(winXsize / 2 + atwood->radius*RATIO_PX_per_M, 
+		TOP_MARG + (atwood->right_length-atwood->change1)*RATIO_PX_per_M, 
 		3, 
 		black);
-	al_draw_line(winXsize / 2 + atwood->radius*RATIO_PX_per_CM, 
+	al_draw_line(winXsize / 2 + atwood->radius*RATIO_PX_per_M, 
 		TOP_MARG, 
-		winXsize / 2 + atwood->radius*RATIO_PX_per_CM, 
-		TOP_MARG + atwood->right_length*RATIO_PX_per_CM, 
+		winXsize / 2 + atwood->radius*RATIO_PX_per_M, 
+		TOP_MARG + (atwood->right_length-atwood->change1)*RATIO_PX_per_M, 
 		white, 1);
 	//draw left minor mass and its string
-	al_draw_filled_rectangle(winXsize / 2 + atwood->radius*RATIO_PX_per_CM - atwood->radius_2*RATIO_PX_per_CM - atwood->mass_x2 * 3,
-		TOP_MARG + atwood->right_length*RATIO_PX_per_CM + atwood->left_minor_length*RATIO_PX_per_CM,
-		winXsize / 2 + atwood->radius*RATIO_PX_per_CM - atwood->radius_2*RATIO_PX_per_CM + atwood->mass_x2 * 3,
-		TOP_MARG + atwood->right_length*RATIO_PX_per_CM + atwood->left_minor_length*RATIO_PX_per_CM + atwood->mass_x2 * 7,
+	al_draw_filled_rectangle(winXsize / 2 + atwood->radius*RATIO_PX_per_M - atwood->radius_2*RATIO_PX_per_M - atwood->mass_x2 * 3,
+		TOP_MARG + (atwood->right_length-atwood->change1)*RATIO_PX_per_M + (atwood->left_minor_length+atwood->change2)*RATIO_PX_per_M,
+		winXsize / 2 + atwood->radius*RATIO_PX_per_M - atwood->radius_2*RATIO_PX_per_M + atwood->mass_x2 * 3,
+		TOP_MARG + (atwood->right_length-atwood->change1)*RATIO_PX_per_M + (atwood->left_minor_length+atwood->change2)*RATIO_PX_per_M + atwood->mass_x2 * 7,
 		mass_color);
-	al_draw_line(winXsize / 2 + atwood->radius*RATIO_PX_per_CM - atwood->radius_2*RATIO_PX_per_CM,
-		TOP_MARG + atwood->right_length*RATIO_PX_per_CM,
-		winXsize / 2 + atwood->radius*RATIO_PX_per_CM - atwood->radius_2*RATIO_PX_per_CM,
-		TOP_MARG + atwood->right_length*RATIO_PX_per_CM + atwood->left_minor_length*RATIO_PX_per_CM,
+	al_draw_line(winXsize / 2 + atwood->radius*RATIO_PX_per_M - atwood->radius_2*RATIO_PX_per_M,
+		TOP_MARG + (atwood->right_length-atwood->change1)*RATIO_PX_per_M,
+		winXsize / 2 + atwood->radius*RATIO_PX_per_M - atwood->radius_2*RATIO_PX_per_M,
+		TOP_MARG + (atwood->right_length-atwood->change1)*RATIO_PX_per_M + (atwood->left_minor_length+atwood->change2)*RATIO_PX_per_M,
 		white, 1);
 	//draw right minor mass and its string
-	al_draw_filled_rectangle(winXsize / 2 + atwood->radius*RATIO_PX_per_CM + atwood->radius_2*RATIO_PX_per_CM - atwood->mass_x3 * 3,
-		TOP_MARG + atwood->right_length*RATIO_PX_per_CM + atwood->right_minor_length*RATIO_PX_per_CM,
-		winXsize / 2 + atwood->radius*RATIO_PX_per_CM + atwood->radius_2*RATIO_PX_per_CM + atwood->mass_x3 * 3,
-		TOP_MARG + atwood->right_length*RATIO_PX_per_CM + atwood->right_minor_length*RATIO_PX_per_CM + atwood->mass_x3 * 7,
+	al_draw_filled_rectangle(winXsize / 2 + atwood->radius*RATIO_PX_per_M + atwood->radius_2*RATIO_PX_per_M - atwood->mass_x3 * 3,
+		TOP_MARG + (atwood->right_length-atwood->change1)*RATIO_PX_per_M + (atwood->right_minor_length-atwood->change2)*RATIO_PX_per_M,
+		winXsize / 2 + atwood->radius*RATIO_PX_per_M + atwood->radius_2*RATIO_PX_per_M + atwood->mass_x3 * 3,
+		TOP_MARG + (atwood->right_length-atwood->change1)*RATIO_PX_per_M + (atwood->right_minor_length-atwood->change2)*RATIO_PX_per_M + atwood->mass_x3 * 7,
 		mass_color);
-	al_draw_line(winXsize / 2 + atwood->radius*RATIO_PX_per_CM + atwood->radius_2*RATIO_PX_per_CM,
-		TOP_MARG + atwood->right_length*RATIO_PX_per_CM,
-		winXsize / 2 + atwood->radius*RATIO_PX_per_CM + atwood->radius_2*RATIO_PX_per_CM,
-		TOP_MARG + atwood->right_length*RATIO_PX_per_CM + atwood->right_minor_length*RATIO_PX_per_CM,
+	al_draw_line(winXsize / 2 + atwood->radius*RATIO_PX_per_M + atwood->radius_2*RATIO_PX_per_M,
+		TOP_MARG + (atwood->right_length-atwood->change1)*RATIO_PX_per_M,
+		winXsize / 2 + atwood->radius*RATIO_PX_per_M + atwood->radius_2*RATIO_PX_per_M,
+		TOP_MARG + (atwood->right_length-atwood->change1)*RATIO_PX_per_M + (atwood->right_minor_length-atwood->change2)*RATIO_PX_per_M,
 		white, 1);
 	//describe left side l1
-	al_draw_textf(font, white, winXsize / 2 - atwood->radius*RATIO_PX_per_CM - 70, TOP_MARG + atwood->radius*RATIO_PX_per_CM - TEXT_SIZE-2, 0, "l1=%.1f", atwood->left_length);
+	al_draw_textf(font, white, winXsize / 2 - atwood->radius*RATIO_PX_per_M - 70, TOP_MARG + atwood->radius*RATIO_PX_per_M - TEXT_SIZE-2, 0, "l1=%.1f", (atwood->left_length+atwood->change1));
 	//describe right side (l2, lm1, lm2)
-	al_draw_textf(font, white, winXsize / 2 + atwood->radius*RATIO_PX_per_CM + 5, TOP_MARG + atwood->radius*RATIO_PX_per_CM - TEXT_SIZE-2, 0, "l2=%.1f", atwood->right_length);
-	al_draw_textf(font, white, winXsize / 2 + atwood->radius*RATIO_PX_per_CM - atwood->radius_2*RATIO_PX_per_CM - 70, 
-		TOP_MARG + atwood->radius_2*RATIO_PX_per_CM +atwood->right_length*RATIO_PX_per_CM - TEXT_SIZE - 2, 0, "l2=%.1f", atwood->left_minor_length);
-	al_draw_textf(font, white, winXsize / 2 + atwood->radius*RATIO_PX_per_CM + atwood->radius_2*RATIO_PX_per_CM + 5,  
-		TOP_MARG + atwood->radius_2*RATIO_PX_per_CM +atwood->right_length*RATIO_PX_per_CM - TEXT_SIZE - 2, 0, "l3=%.1f", atwood->right_minor_length);
+	al_draw_textf(font, white, winXsize / 2 + atwood->radius*RATIO_PX_per_M + 5, TOP_MARG + atwood->radius*RATIO_PX_per_M - TEXT_SIZE-2, 0, "l2=%.1f", (atwood->right_length-atwood->change1));
+	al_draw_textf(font, white, winXsize / 2 + atwood->radius*RATIO_PX_per_M - atwood->radius_2*RATIO_PX_per_M - 70, 
+		TOP_MARG + atwood->radius_2*RATIO_PX_per_M +(atwood->right_length-atwood->change1)*RATIO_PX_per_M - TEXT_SIZE - 2, 0, "l2=%.1f", (atwood->left_minor_length+atwood->change2));
+	al_draw_textf(font, white, winXsize / 2 + atwood->radius*RATIO_PX_per_M + atwood->radius_2*RATIO_PX_per_M + 5,  
+		TOP_MARG + atwood->radius_2*RATIO_PX_per_M +(atwood->right_length-atwood->change1)*RATIO_PX_per_M - TEXT_SIZE - 2, 0, "l3=%.1f", (atwood->right_minor_length-atwood->change2));
 
 //#define FPS_SAMPLE_NUMBER 5
 	al_draw_textf(font_big, al_map_rgb(255, 100, 100), 5, 5, 0, "t=%.3f", ((float)current_time)/CLOCKS_PER_SEC);
@@ -216,9 +219,12 @@ int draw_on_screen(machine *atwood, clock_t current_time)
 	al_draw_textf(font, white, 5, 35+5,					0, "m1=%.1f", atwood->mass_x1);
 	al_draw_textf(font, white, 5, 35+5+(TEXT_SIZE+5),	0, "m2=%.1f", atwood->mass_x2);
 	al_draw_textf(font, white, 5, 35+5+2*(TEXT_SIZE+5), 0, "m3=%.1f", atwood->mass_x3);
-	long uselessfibtable[100] = { 0 };
-	for (int i = 0; i < 25; i++)
-		uselessfibtable[i] = fib(i);
+	al_draw_textf(font, white, 5, 35+5+3*(TEXT_SIZE+5), 0, "a1=%.4f v1=%.4f", atwood->a1, atwood->a1*((float)current_time/CLOCKS_PER_SEC));
+	al_draw_textf(font, white, 5, 35+5+4*(TEXT_SIZE+5), 0, "a2=%.4f v2=%.4f", atwood->a2);
+
+	//long uselessfibtable[100] = { 0 };
+	//for (int i = 0; i < 25; i++)
+	//	uselessfibtable[i] = fib(i);
 
 	al_flip_display(); 
 	return 0;
@@ -227,31 +233,28 @@ int draw_on_screen(machine *atwood, clock_t current_time)
 int recalculate_machine(machine *atwood, clock_t current_time)
 {
 	int i = 2;
-	double a1=0, d1=0, a2=0, d2=0;
 	// x=1/2 at^2
 	// for main pulley
-	if (atwood->left_length > 0 && atwood->right_length > 0)
+	if (atwood->left_length+atwood->change1 > 0 && atwood->right_length-atwood->change1 > 0)
 	{
 		double m2 = atwood->mass_x2 + atwood->mass_x3;
 		double m1 = atwood->mass_x1;
 		//assuming m1 > m2
-		a1 = G_VALUE*(m1 - m2) / (m1 + m2);
+		atwood->a1 = G_VALUE*(m1 - m2) / (m1 + m2);
 		// displacement
-		d1 = 0.5*a1*pow((((double)current_time/*-last_time*/) / CLOCKS_PER_SEC), 2);
-		atwood->change1 = d1;
+		atwood->change1 = 0.5*atwood->a1*pow((((double)current_time) / CLOCKS_PER_SEC), 2);
 	}
 	else
 		i -= 1;
-	if (atwood->right_minor_length>0 && atwood->left_minor_length>0)
+	if (atwood->right_minor_length+atwood->change2>0 && atwood->left_minor_length-atwood->change2>0)
 	{
 		//assuming mm1 > mm2
-		a2 = G_VALUE*(atwood->mass_x2 - atwood->mass_x3) / (atwood->mass_x2 + atwood->mass_x3);
+		atwood->a2 = G_VALUE*(atwood->mass_x2 - atwood->mass_x3) / (atwood->mass_x2 + atwood->mass_x3);
 		// displacement
-		d2 = 0.5 * a2 * pow((((double)current_time/*-last_time*/) / CLOCKS_PER_SEC), 2);
-		atwood->change2 = d2;
+		atwood->change2 = 0.5 * atwood->a2 * pow((((double)current_time) / CLOCKS_PER_SEC), 2);
 	}
 	else i -= 1;
-	printf("a=%f\tt=%f\td1=%f\td2=%f\t\t%f\n", a1, (((double)current_time/*-last_time*/) / CLOCKS_PER_SEC), d1, d2, atwood->left_length);
+	printf("a=%f\tt=%f\td1=%f\td2=%f\t\t%f\n", atwood->a1, (((double)current_time/*-last_time*/) / CLOCKS_PER_SEC), atwood->change1, atwood->change2, atwood->left_length);
 	last_time = current_time;
 	return i;
 }
