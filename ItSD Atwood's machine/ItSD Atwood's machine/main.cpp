@@ -20,9 +20,11 @@ ALLEGRO_FONT *font = NULL;
 ALLEGRO_FONT *font_big= NULL;
 ALLEGRO_EVENT ev;
 
+#define G_VALUE 9.81f
 int winXsize = 800;
 int winYsize = 800;
 clock_t dt;
+clock_t last_time;
 long recalc_counter = 0;
 
 class machine
@@ -38,6 +40,7 @@ public:
 	float right_length;
 	float left_minor_length;
 	float right_minor_length;	
+	float change1, change2;
 	machine(int x, int y, float r1, float m1, float r2, float m2, float m3, float l1, float l2, float lm1, float lm2)
 	{
 		main_pulley_coord_x = x;
@@ -51,6 +54,7 @@ public:
 		right_length = l2;
 		left_minor_length = lm1;
 		right_minor_length = lm2;
+		change1 = change2 = 0;
 	}
 };
 
@@ -162,7 +166,7 @@ int draw_on_screen(machine *atwood, clock_t current_time)
 	al_draw_line(winXsize / 2 + atwood->radius*RATIO_PX_per_CM, 
 		TOP_MARG, 
 		winXsize / 2 + atwood->radius*RATIO_PX_per_CM, 
-		TOP_MARG + atwood->left_length*RATIO_PX_per_CM, 
+		TOP_MARG + atwood->right_length*RATIO_PX_per_CM, 
 		white, 1);
 	//draw left minor mass and its string
 	al_draw_filled_rectangle(winXsize / 2 + atwood->radius*RATIO_PX_per_CM - atwood->radius_2*RATIO_PX_per_CM - atwood->mass_x2 * 3,
@@ -195,7 +199,7 @@ int draw_on_screen(machine *atwood, clock_t current_time)
 	al_draw_textf(font, white, winXsize / 2 + atwood->radius*RATIO_PX_per_CM + atwood->radius_2*RATIO_PX_per_CM + 5,  
 		TOP_MARG + atwood->radius_2*RATIO_PX_per_CM +atwood->right_length*RATIO_PX_per_CM - TEXT_SIZE - 2, 0, "l3=%.1f", atwood->right_minor_length);
 
-#define FPS_SAMPLE_NUMBER 5
+//#define FPS_SAMPLE_NUMBER 5
 	al_draw_textf(font_big, al_map_rgb(255, 100, 100), 5, 5, 0, "t=%.3f", ((float)current_time)/CLOCKS_PER_SEC);
 	recalc_counter++;
 	//static int fps_averager[FPS_SAMPLE_NUMBER];
@@ -207,7 +211,7 @@ int draw_on_screen(machine *atwood, clock_t current_time)
 	//}
 	int fps = (int)(1.0 / (((double)(current_time - dt)) / 1000));
 	if (fps < 1000 && fps > 0)
-		al_draw_textf(font, white, winXsize - 5, 5, ALLEGRO_ALIGN_RIGHT, "FPS: %10d", fps);
+		al_draw_textf(font, white, winXsize - 5, 5, ALLEGRO_ALIGN_RIGHT, "FPS: %3d", fps);
 	dt = current_time;
 	al_draw_textf(font, white, 5, 35+5,					0, "m1=%.1f", atwood->mass_x1);
 	al_draw_textf(font, white, 5, 35+5+(TEXT_SIZE+5),	0, "m2=%.1f", atwood->mass_x2);
@@ -220,12 +224,44 @@ int draw_on_screen(machine *atwood, clock_t current_time)
 	return 0;
 }
 
+int recalculate_machine(machine *atwood, clock_t current_time)
+{
+	int i = 2;
+	double a1=0, d1=0, a2=0, d2=0;
+	// x=1/2 at^2
+	// for main pulley
+	if (atwood->left_length > 0 && atwood->right_length > 0)
+	{
+		double m2 = atwood->mass_x2 + atwood->mass_x3;
+		double m1 = atwood->mass_x1;
+		//assuming m1 > m2
+		a1 = G_VALUE*(m1 - m2) / (m1 + m2);
+		// displacement
+		d1 = 0.5*a1*pow((((double)current_time/*-last_time*/) / CLOCKS_PER_SEC), 2);
+		atwood->change1 = d1;
+	}
+	else
+		i -= 1;
+	if (atwood->right_minor_length>0 && atwood->left_minor_length>0)
+	{
+		//assuming mm1 > mm2
+		a2 = G_VALUE*(atwood->mass_x2 - atwood->mass_x3) / (atwood->mass_x2 + atwood->mass_x3);
+		// displacement
+		d2 = 0.5 * a2 * pow((((double)current_time/*-last_time*/) / CLOCKS_PER_SEC), 2);
+		atwood->change2 = d2;
+	}
+	else i -= 1;
+	printf("a=%f\tt=%f\td1=%f\td2=%f\t\t%f\n", a1, (((double)current_time/*-last_time*/) / CLOCKS_PER_SEC), d1, d2, atwood->left_length);
+	last_time = current_time;
+	return i;
+}
+
 int main()
 {
 	clock_t time = 0;
 	allegro_initialization(winXsize, winYsize);
 	//(int x, int y, float r1, float m1, float r2, float m2, float m3, float l1, float l2, float lm1, float lm2)
-	machine atwoodMachine(winXsize / 2, 100, 2.0, 10, 1.0, 5.0, 6.0, 5.0, 5.0, 3.0, 2.5);
+	machine atwoodMachine(winXsize / 2, 100, 2.0, 10.9, 1.0, 5.0, 6.0, 5.0, 5.0, 3.0, 2.5);
 
 	TIMER_START;
 	while (1)
@@ -237,9 +273,20 @@ int main()
 				return 0;  //exit program
 		}
 		clock_t time_elapsed = TIMER_GET;
+		if (!recalculate_machine(&atwoodMachine, time_elapsed))	// if everything stopped => stop simulation
+			break;
 		draw_on_screen(&atwoodMachine, time_elapsed);
 	}
-	
+	//now: simulation ended, waiting for any key.
+	while (atwoodMachine.left_length > 0 && atwoodMachine.right_length > 0)
+	{
+		if (!al_is_event_queue_empty(event_queue))
+		{
+			al_wait_for_event(event_queue, &ev);
+			if (ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE || (ev.type == ALLEGRO_EVENT_KEY_DOWN && (ev.keyboard.keycode == ALLEGRO_KEY_Q || ev.keyboard.keycode == ALLEGRO_KEY_ESCAPE)))
+				return 0;  //exit program
+		}
+	}
 	system("pause");
 	return 0;
 }
