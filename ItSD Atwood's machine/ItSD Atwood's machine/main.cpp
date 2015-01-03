@@ -1,4 +1,5 @@
-#include <iostream>
+//TODO dynamic m, r, l change
+//#include <iostream>
 #define TIMER_START		double t = al_get_time()
 #define TIMER_GET		(al_get_time() - t)
 using namespace std;
@@ -16,11 +17,10 @@ ALLEGRO_FONT *font = NULL;
 ALLEGRO_FONT *font_big = NULL;
 ALLEGRO_EVENT ev;
 
-#define G_VALUE 9.81f
+#define G_VALUE 9.81
 int winXsize = 800;
 int winYsize = 750;
-double dt;
-double last_time;
+double dt = 0;
 
 class machine
 {
@@ -36,7 +36,7 @@ public:
 	float left_minor_length;
 	float right_minor_length;
 	float change1, change2;
-	double a1, d1, a2, d2;
+	double a1, a2;
 
 	machine(int x, int y, float r1, float m1, float r2, float m2, float m3, float l1, float l2, float lm1, float lm2)
 	{
@@ -142,12 +142,13 @@ int draw_on_screen(machine *atwood, double current_time)
 	//draw main pulley and its center
 	al_draw_filled_circle(winXsize / 2, TOP_MARG - atwood->radius*RATIO_PX_per_M, RATIO_PX_per_M*atwood->radius, wheel_color);
 	al_draw_filled_circle(winXsize / 2, TOP_MARG - atwood->radius*RATIO_PX_per_M, 5, black);
-	//draw mass 1 and its string
+	//draw mass 1 and its string, describe m1
 	al_draw_filled_rectangle(winXsize / 2 - atwood->radius*RATIO_PX_per_M - (atwood->mass_x1 * 3),
 		TOP_MARG + (atwood->left_length + atwood->change1)*RATIO_PX_per_M,
 		winXsize / 2 - atwood->radius*RATIO_PX_per_M + (atwood->mass_x1 * 3),
 		TOP_MARG + (atwood->left_length + atwood->change1)*RATIO_PX_per_M + atwood->mass_x1 * 7,
 		mass_color);
+	al_draw_text(font, white, winXsize / 2 - atwood->radius*RATIO_PX_per_M - (atwood->mass_x1 * 3), TOP_MARG + (atwood->left_length + atwood->change1)*RATIO_PX_per_M, 2, "m1");
 	al_draw_line(winXsize / 2 - atwood->radius*RATIO_PX_per_M,
 		TOP_MARG - atwood->radius*RATIO_PX_per_M,
 		winXsize / 2 - atwood->radius*RATIO_PX_per_M,
@@ -169,29 +170,33 @@ int draw_on_screen(machine *atwood, double current_time)
 		white, 1);
 
 #define SMALL_MARG atwood->radius_2*RATIO_PX_per_M
-	//draw left minor mass and its string
+	//draw left minor mass and its string, describe m2
 	al_draw_filled_rectangle(winXsize / 2 + atwood->radius*RATIO_PX_per_M - atwood->radius_2*RATIO_PX_per_M - atwood->mass_x2 * 3,
 		TOP_MARG + (atwood->right_length - atwood->change1)*RATIO_PX_per_M + (atwood->left_minor_length + atwood->change2)*RATIO_PX_per_M + SMALL_MARG,
 		winXsize / 2 + atwood->radius*RATIO_PX_per_M - atwood->radius_2*RATIO_PX_per_M + atwood->mass_x2 * 3,
 		TOP_MARG + (atwood->right_length - atwood->change1)*RATIO_PX_per_M + (atwood->left_minor_length + atwood->change2)*RATIO_PX_per_M + atwood->mass_x2 * 7 + SMALL_MARG,
 		mass_color);
+	al_draw_text(font, white, winXsize / 2 + atwood->radius*RATIO_PX_per_M - atwood->radius_2*RATIO_PX_per_M - atwood->mass_x2 * 3,
+		TOP_MARG + (atwood->right_length - atwood->change1)*RATIO_PX_per_M + (atwood->left_minor_length + atwood->change2)*RATIO_PX_per_M + SMALL_MARG, 2, "m2");
 	al_draw_line(winXsize / 2 + atwood->radius*RATIO_PX_per_M - atwood->radius_2*RATIO_PX_per_M,
 		TOP_MARG + (atwood->right_length - atwood->change1)*RATIO_PX_per_M,
 		winXsize / 2 + atwood->radius*RATIO_PX_per_M - atwood->radius_2*RATIO_PX_per_M,
 		TOP_MARG + (atwood->right_length - atwood->change1)*RATIO_PX_per_M + (atwood->left_minor_length + atwood->change2)*RATIO_PX_per_M + SMALL_MARG,
 		white, 1);
-	//draw right minor mass and its string
+	//draw right minor mass and its string, describe m3
 	al_draw_filled_rectangle(winXsize / 2 + atwood->radius*RATIO_PX_per_M + atwood->radius_2*RATIO_PX_per_M - atwood->mass_x3 * 3,
 		TOP_MARG + (atwood->right_length - atwood->change1)*RATIO_PX_per_M + (atwood->right_minor_length - atwood->change2)*RATIO_PX_per_M + SMALL_MARG,
 		winXsize / 2 + atwood->radius*RATIO_PX_per_M + atwood->radius_2*RATIO_PX_per_M + atwood->mass_x3 * 3,
 		TOP_MARG + (atwood->right_length - atwood->change1)*RATIO_PX_per_M + (atwood->right_minor_length - atwood->change2)*RATIO_PX_per_M + atwood->mass_x3 * 7 + SMALL_MARG,
 		mass_color);
+	al_draw_text(font, white, winXsize / 2 + atwood->radius*RATIO_PX_per_M + atwood->radius_2*RATIO_PX_per_M + atwood->mass_x3 * 3,
+		TOP_MARG + (atwood->right_length - atwood->change1)*RATIO_PX_per_M + (atwood->right_minor_length - atwood->change2)*RATIO_PX_per_M + SMALL_MARG, 0, "m3");
 	al_draw_line(winXsize / 2 + atwood->radius*RATIO_PX_per_M + atwood->radius_2*RATIO_PX_per_M,
 		TOP_MARG + (atwood->right_length - atwood->change1)*RATIO_PX_per_M,
 		winXsize / 2 + atwood->radius*RATIO_PX_per_M + atwood->radius_2*RATIO_PX_per_M,
 		TOP_MARG + (atwood->right_length - atwood->change1)*RATIO_PX_per_M + (atwood->right_minor_length - atwood->change2)*RATIO_PX_per_M + SMALL_MARG,
 		white, 1);
-	// draw small limiting lines
+	// draw small limiting dotted lines
 	for (int i = -0.5*atwood->radius*RATIO_PX_per_M; i < 2.5*atwood->radius*RATIO_PX_per_M; i += 3)
 	if (i<0.5*atwood->radius*RATIO_PX_per_M || i>1.5*atwood->radius*RATIO_PX_per_M)
 		al_draw_pixel(winXsize / 2 - atwood->radius*RATIO_PX_per_M + i, TOP_MARG, al_map_rgb(255, 255, 255));
@@ -199,29 +204,18 @@ int draw_on_screen(machine *atwood, double current_time)
 	if (i<0.5*atwood->radius_2*RATIO_PX_per_M || i>1.5*atwood->radius_2*RATIO_PX_per_M)
 		al_draw_pixel(winXsize / 2 + atwood->radius*RATIO_PX_per_M - atwood->radius_2*RATIO_PX_per_M + i, TOP_MARG + atwood->right_length*RATIO_PX_per_M + atwood->radius_2*RATIO_PX_per_M - atwood->change1*RATIO_PX_per_M, al_map_rgb(255, 255, 255));
 
-	//describe left side l1
+	//describe lengths l1, l2, lm1, lm2
 	al_draw_textf(font, white, winXsize / 2 - atwood->radius*RATIO_PX_per_M - 70, TOP_MARG - TEXT_SIZE - 2, 0, "l1=%.1f", (atwood->left_length + atwood->change1));
-	//describe right side (l2, lm1, lm2)
 	al_draw_textf(font, white, winXsize / 2 + atwood->radius*RATIO_PX_per_M + 5, TOP_MARG - TEXT_SIZE - 2, 0, "l2=%.1f", (atwood->right_length - atwood->change1));
 	al_draw_textf(font, white, winXsize / 2 + atwood->radius*RATIO_PX_per_M - atwood->radius_2*RATIO_PX_per_M - 70,
 		TOP_MARG + atwood->radius_2*RATIO_PX_per_M + (atwood->right_length - atwood->change1)*RATIO_PX_per_M - TEXT_SIZE - 2, 0, "l2=%.1f", (atwood->left_minor_length + atwood->change2));
 	al_draw_textf(font, white, winXsize / 2 + atwood->radius*RATIO_PX_per_M + atwood->radius_2*RATIO_PX_per_M + 5,
 		TOP_MARG + atwood->radius_2*RATIO_PX_per_M + (atwood->right_length - atwood->change1)*RATIO_PX_per_M - TEXT_SIZE - 2, 0, "l3=%.1f", (atwood->right_minor_length - atwood->change2));
 
+	// write various parameters on screen
 	al_draw_textf(font_big, al_map_rgb(255, 100, 100), 5, 5, 0, "t=%.3f", (current_time));
-	//#define FPS_SAMPLE_NUMBER 5
-	//static long recalc_counter = 0;
-	//recalc_counter++;
-
-	//static int fps_averager[FPS_SAMPLE_NUMBER] = { 0 };
-	//unsigned long fps = 0;
-	//current_time = al_get_time();
-	//fps_averager[recalc_counter % 5] = (int)(1.0 / (((current_time - dt)) / 1000));
-	//for (int i = 0; i < FPS_SAMPLE_NUMBER; i++)
-	//{
-	//	fps += fps_averager[i];
-	//}
-	al_draw_textf(font, white, winXsize - 5, 5, ALLEGRO_ALIGN_RIGHT, "LPS: %3d", (int)(1.0 / (((current_time - dt)) / 1000)));
+	int fps = (1.0 / (((current_time - dt)) / 1000));
+	al_draw_textf(font, white, winXsize - 5, 5, ALLEGRO_ALIGN_RIGHT, "calculations per second: %3d", (fps<0 ? 0 : fps));
 	//al_draw_textf(font, white, winXsize - 5, 5, ALLEGRO_ALIGN_RIGHT, "FPS: %3d", fps/FPS_SAMPLE_NUMBER);
 	dt = current_time;
 	al_draw_textf(font, white, 5, 35 + 5, 0, "m1=%.1f", atwood->mass_x1);
@@ -229,9 +223,8 @@ int draw_on_screen(machine *atwood, double current_time)
 	al_draw_textf(font, white, 5, 35 + 5 + 2 * (TEXT_SIZE + 5), 0, "m3=%.1f", atwood->mass_x3);
 	al_draw_textf(font, white, 5, 35 + 5 + 3 * (TEXT_SIZE + 5), 0, "a1=%.4f v1=%.4f", atwood->a1, atwood->a1*current_time);
 	al_draw_textf(font, white, 5, 35 + 5 + 4 * (TEXT_SIZE + 5), 0, "a2=%.4f v2=%.4f", atwood->a2, atwood->a2*current_time);
-	al_draw_textf(font, white, 5, 35 + 5 + 5 * (TEXT_SIZE + 5), 0, "T=%f", 2 * G_VALUE*atwood->mass_x1*(atwood->mass_x2 + atwood->mass_x3) / (atwood->mass_x1 + (atwood->mass_x2 + atwood->mass_x3)));
+	//al_draw_textf(font, white, 5, 35 + 5 + 5 * (TEXT_SIZE + 5), 0, "T1=%f", 2 * G_VALUE*atwood->mass_x1*(atwood->mass_x2 + atwood->mass_x3) / (atwood->mass_x1 + (atwood->mass_x2 + atwood->mass_x3)));
 
-	//test = movable diameter
 #define M_PI       3.14159265358979323846
 #define COSSIN_CONTENT ((atwood->change1)/(2*M_PI*atwood->radius)*2*M_PI)
 	al_draw_line(winXsize / 2 + sin(COSSIN_CONTENT)*atwood->radius*RATIO_PX_per_M,
@@ -240,8 +233,16 @@ int draw_on_screen(machine *atwood, double current_time)
 		TOP_MARG - atwood->radius*RATIO_PX_per_M - cos(COSSIN_CONTENT)*atwood->radius*RATIO_PX_per_M,
 		al_map_rgb(255, 100, 100), 1.5);
 
+#define COSSIN_CONTENT ((atwood->change2)/(2*M_PI*atwood->radius_2)*2*M_PI)
+	al_draw_line(winXsize / 2 + atwood->radius*RATIO_PX_per_M + sin(COSSIN_CONTENT)*atwood->radius_2*RATIO_PX_per_M,
+		TOP_MARG + (atwood->right_length - atwood->change1)*RATIO_PX_per_M + cos(COSSIN_CONTENT)*atwood->radius_2*RATIO_PX_per_M, 
+		winXsize / 2 + atwood->radius*RATIO_PX_per_M - sin(COSSIN_CONTENT)*atwood->radius_2*RATIO_PX_per_M,
+		TOP_MARG + (atwood->right_length - atwood->change1)*RATIO_PX_per_M - cos(COSSIN_CONTENT)*atwood->radius_2*RATIO_PX_per_M,
+		al_map_rgb(255, 100, 100), 1.5);
+	
+	// small stress-test
 	//long uselessfibtable[100] = { 0 };
-	//for (int i = 0; i < 25; i++)
+	//for (int i = 0; i < 30; i++)
 	//	uselessfibtable[i] = fib(i);
 
 	al_flip_display();
@@ -251,7 +252,6 @@ int draw_on_screen(machine *atwood, double current_time)
 int recalculate_machine(machine *atwood, double current_time)
 {
 	int i = 2;
-	// x=1/2 at^2
 	// for main pulley
 	if (atwood->left_length + atwood->change1 > 0 && atwood->right_length - atwood->change1 > 0 && atwood->a1 != 0)
 	{
@@ -263,7 +263,12 @@ int recalculate_machine(machine *atwood, double current_time)
 		atwood->change1 = 0.5*atwood->a1*pow(((current_time)), 2);
 	}
 	else
+	{
 		i -= 1;
+		atwood->a1 = 0;
+	}
+
+	// secondary pulley
 	if (atwood->right_minor_length - atwood->change2 > 0 && atwood->left_minor_length + atwood->change2 > 0 && atwood->a2 != 0)
 	{
 		//assuming mm1 > mm2
@@ -272,9 +277,10 @@ int recalculate_machine(machine *atwood, double current_time)
 		atwood->change2 = 0.5 * atwood->a2 * pow(((current_time)), 2);
 	}
 	else
+	{
 		i -= 1;
-	//printf("a=%f\tt=%f\td1=%f\td2=%f\t\t%f\n", atwood->a1, (current_time, atwood->change1, atwood->change2, atwood->left_length));
-	last_time = current_time;
+		atwood->a2 = 0;
+	}
 	return i;
 }
 
@@ -291,26 +297,27 @@ void printhelp()
 
 int main(int argc, char **argv)
 {
-	double time = 0;
+	if (argc == 2 && strstr(argv[1], "h"))	// if help was called
+	{
+		printhelp();
+		return 0;
+	}
+	FreeConsole();
 	bool repeat = false;
 	machine *atwoodMachine = NULL;
 	do{
 		allegro_initialization(winXsize, winYsize);
 		//(int x, int y, float r1, float m1, float r2, float m2, float m3, float l1, float l2, float lm1, float lm2)
-		if (argc == 2 && strstr(argv[1], "h"))
-		{
-			printhelp();
-			return 0;
-		}
-		else if (argc==1)
+
+		if (argc == 1)
 			atwoodMachine = new machine(winXsize / 2, 100, 2.0, 10.9, 1.0, 5.0, 6.0, 5.0, 5.0, 3.0, 2.5);
 		else if (argc == 4)	//masses only
 			atwoodMachine = new machine(winXsize / 2, 100, 2.0, atof(argv[1]), 1.0, atof(argv[2]), atof(argv[3]), 5.0, 5.0, 3.0, 2.5);
 		else if (argc == 6)	//masses and radiuses
 			atwoodMachine = new machine(winXsize / 2, 100, atof(argv[4]), atof(argv[1]), atof(argv[5]), atof(argv[2]), atof(argv[3]), 5.0, 5.0, 3.0, 2.5);
-		else if (argc == 8)
+		else if (argc == 8)	//masses and lengths
 			atwoodMachine = new machine(winXsize / 2, 100, 2.0, atof(argv[1]), 1.0, atof(argv[2]), atof(argv[3]), atof(argv[4]), atof(argv[5]), atof(argv[6]), atof(argv[7]));
-		else if (argc == 10)
+		else if (argc == 10)//masses, lengths and radiuses
 			atwoodMachine = new machine(winXsize / 2, 100, atof(argv[8]), atof(argv[1]), atof(argv[9]), atof(argv[2]), atof(argv[3]), atof(argv[4]), atof(argv[5]), atof(argv[6]), atof(argv[7]));
 		draw_on_screen(atwoodMachine, 0);
 		al_draw_text(font_big, al_map_rgb(255, 255, 255), winXsize / 2, 50, 1, "Press any key to start");
